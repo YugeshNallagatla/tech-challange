@@ -1,4 +1,5 @@
 # Create an RDS MySql 5.7 Instance
+# For RDS Connect "mysql -h rds-database.c1akdc1qd6ad.us-east-1.rds.amazonaws.com -p 3306 -u rdsroot -p Devops123"
 Parameters:
   Owner:
     Description: Enter the Name of the owner for this Stack.
