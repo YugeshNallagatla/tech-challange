@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template deploys ec2 instance and user data script query the metadata of the instance 
+Parameters:
+  VPC:
+    Description: Select VPC form the available VPCs in your account.
+    Type: AWS::EC2::VPC::Id
+    Default: "vpc-0f1916659ce72b010"
+  PublicSubnet1:
+    Description: Select public Subnet 1.
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-03ee25ffc7ac8616c"
+  PublicSubnet2:
+    Description: Select public Subnet 2.
+    Type: AWS::EC2::Subnet::Id
+    Default: "subnet-0caca878dbb90ddab"
+
+Resources:
+##Instance Security Group
+  InstanceSecurityGroup1:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: SecurityGroup for ec2 metadata instance
+      GroupDescription: Open HTTP (port 80) and SSH (port 22)
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          
+  ## Launch template
+  LaunchTemplate1:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-launchTemplate-metadata'
+      LaunchTemplateData:
+        ImageId: ami-0b0dcb5067f052a63
+        InstanceType: t2.micro
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup1
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            yum update -y
+            yum install httpd -y
+            systemctl start httpd
+            systemctl enable httpd
+            export HOSTNAME=$(curl --retry 5 --connect-timeout 3 -s http://169.254.169.254/latest/meta-data/local-hostname)
+            echo "instance host name is $HOSTNAME"
+  # Create AutoScaling Group
+  AutoScalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate1
+        Version: !GetAtt LaunchTemplate1.LatestVersionNumber
+      MaxSize: '5'
+      MinSize: '1'
+      DesiredCapacity: '1'
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
