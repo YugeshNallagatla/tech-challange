@@ -1,1 +1,1 @@
-Hello this tech challenge repo
+Hello this is tech challenge repo
